@@ -4,7 +4,7 @@ from typing import Union
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-class UserDTO:
+class UserDTO(BaseModel):
     email: str
     password: str
 
@@ -24,7 +24,7 @@ def read_root():
 
 @app.post("/auth/login")
 async def login(user: UserDTO):
-    token = TokenDTO()
+    token = "test"
     return token
 
 
