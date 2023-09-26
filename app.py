@@ -32,7 +32,7 @@ def read_root():
 
 @app.post("/auth/login")
 async def login(user: UserDTO):
-    token = {"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"}
+    token = {"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik5pY2sgSm9uZXMiLCJwaWN0dXJlIjoiYXNzZXRzL2ltYWdlcy9uaWNrLnBuZyIsImlhdCI6MTUxNjIzOTAyMn0.mSabPRMKLZlam9GNqAlqmK3TUPAdBwezgv88V61XPdA"}
     return token
 
 @app.get("/items/{item_id}")
