@@ -4,11 +4,11 @@ from typing import Union
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-class UserDTO(BaseModel):
+class UserDTO:
     email: str
     password: str
 
-class TokenDTO(BaseModel):
+class TokenDTO:
     token: str
 
 app = FastAPI()
