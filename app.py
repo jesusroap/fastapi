@@ -24,9 +24,7 @@ def read_root():
 
 @app.post("/auth/login")
 async def login(user: UserDTO):
-    token = {
-        token: "test"
-    }
+    token = TokenDTO()
     return token
 
 
