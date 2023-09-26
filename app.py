@@ -4,6 +4,13 @@ from typing import Union
 from fastapi import FastAPI
 from pydantic import BaseModel
 
+class UserDTO(BaseModel):
+    email: str
+    password: str
+
+class TokenDTO(BaseModel):
+    token: str
+
 app = FastAPI()
 
 class Item(BaseModel):
@@ -14,6 +21,13 @@ class Item(BaseModel):
 @app.get("/")
 def read_root():
     return {"Hello": "World"}
+
+@app.post("/auth/login")
+async def login(user: UserDTO):
+    token = {
+        token: "test"
+    }
+    return token
 
 
 @app.get("/items/{item_id}")
