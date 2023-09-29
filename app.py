@@ -56,7 +56,7 @@ ftp_contrasena = config("FTP_PASS")
 
 # Configuración de la conexión a la base de datos MySQL
 DATABASE_URL = config("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_recycle=3600, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = automap_base()
 Base.prepare(engine, reflect=True)
@@ -177,50 +177,53 @@ async def eliminar_directorio(nombre_directorio: str):
 
 @app.get("/user_catalog/")
 async def get_user_catalog(email: str):
-    user = Base.classes.users
-    family = Base.classes.familys
-    product = Base.classes.products
-    family_product = Base.classes.familyproducts
+    try:
+        user = Base.classes.users
+        family = Base.classes.familys
+        product = Base.classes.products
+        family_product = Base.classes.familyproducts
 
-    # Crear una sesión de base de datos
-    db = SessionLocal()
+        # Crear una sesión de base de datos
+        db = SessionLocal()
 
-    # Consulta SQL para obtener el catálogo del usuario
-    stmt = (
-        select(
-            user.email,
-            family.name.label('family'),
-            product.name.label('name'),
-            product.namefile,
-            product.price
+        # Consulta SQL para obtener el catálogo del usuario
+        stmt = (
+            select(
+                user.email,
+                family.name.label('family'),
+                product.name.label('name'),
+                product.namefile,
+                product.price
+            )
+            .select_from(
+                join(family_product, family, family.id == family_product.family_id)
+                .join(product, family_product.producto_id == product.id)
+                .join(user, family.user_id == user.id)
+            )
+            .where(user.email == email)
         )
-        .select_from(
-            join(family_product, family, family.id == family_product.family_id)
-            .join(product, family_product.producto_id == product.id)
-            .join(user, family.user_id == user.id)
-        )
-        .where(user.email == email)
-    )
 
-    result = db.execute(stmt)
+        result = db.execute(stmt)
 
-    # Organizar los resultados en la estructura JSON requerida
-    catalog = {}
-    for row in result:
-        family_name = row[1]
-        product_data = {
-            "name": row[2],
-            "image": row[3],
-            "price": row[4]
-        }
+        # Organizar los resultados en la estructura JSON requerida
+        catalog = {}
+        for row in result:
+            family_name = row[1]
+            product_data = {
+                "name": row[2],
+                "image": row[3],
+                "price": row[4]
+            }
 
-        if family_name not in catalog:
-            catalog[family_name] = {"family": family_name, "products": []}
+            if family_name not in catalog:
+                catalog[family_name] = {"family": family_name, "products": []}
 
-        catalog[family_name]["products"].append(product_data)
+            catalog[family_name]["products"].append(product_data)
 
-    user_data = {"user": email, "catalog": list(catalog.values())}
+        user_data = {"user": email, "catalog": list(catalog.values())}
 
-    db.close()
+        db.close()
 
-    return user_data
+        return user_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
