@@ -59,7 +59,7 @@ ftp_contrasena = config("FTP_PASS")
 
 # Configuración de la conexión a la base de datos MySQL
 DATABASE_URL = config("DATABASE_URL")
-engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL, pool_recycle=280, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = automap_base()
 Base.prepare(engine, reflect=True)
