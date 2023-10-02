@@ -20,10 +20,13 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.automap import automap_base
 import mysql.connector
 
-app = FastAPI()
+from routes import router
 
-# Crear una instancia de APIRouter
-router = APIRouter()
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+app = FastAPI()
 
 origins = ["*"]
 
@@ -227,3 +230,39 @@ async def get_user_catalog(email: str):
         return user_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+    
+app.include_router(router, prefix="/services", tags=["services"])
+
+@app.post("/send-email/")
+async def send_email(email_to: str, subject: str, message: str):
+    # Configura los detalles del servidor de correo
+    smtp_server = "smtp.hostinger.com"
+    smtp_port = 587
+    smtp_username = "contacto@boomtel.com.co"
+    smtp_password = "Contacto123*"
+
+    # Crea un mensaje de correo electrónico
+    msg = MIMEMultipart()
+    msg["From"] = smtp_username
+    msg["To"] = email_to
+    msg["Subject"] = subject
+
+    # Agrega el cuerpo del mensaje
+    msg.attach(MIMEText(message, "plain"))
+
+    try:
+        # Conéctate al servidor SMTP
+        server = smtplib.SMTP(smtp_server, smtp_port)
+        # server = smtplib.SMTP_SSL(smtp_server, smtp_port) # Para enviar por SSL
+        server.starttls()  # Usar TLS (si estás usando SMTPS, elimina esta línea)
+        server.login(smtp_username, smtp_password)
+
+        # Envía el correo electrónico
+        server.sendmail(smtp_username, email_to, msg.as_string())
+
+        # Cierra la conexión
+        server.quit()
+
+        return {"message": "Correo electrónico enviado correctamente"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al enviar el correo electrónico: {str(e)}")
