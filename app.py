@@ -1,7 +1,7 @@
 # app.py
 from typing import Union
 
-from fastapi import FastAPI, HTTPException, APIRouter
+from fastapi import FastAPI, HTTPException, UploadFile, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -68,10 +68,29 @@ Base.prepare(engine, reflect=True)
 def read_root():
     return {"Hello": "World"}
 
+@app.delete("/auth/logout")
+async def logout():
+    return {
+        "success": "true"
+    }
+
 @app.post("/auth/login")
 async def login(user: UserDTO):
-    token = {"token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik5pY2sgSm9uZXMiLCJwaWN0dXJlIjoiYXNzZXRzL2ltYWdlcy9uaWNrLnBuZyIsImVtYWlsIjoibmlja19qb25lc0BnbWFpbC5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.fTAK9gUtjoVwMYgznqTN9-6uXFMjedncCXSYtDLeZZE"}
-    return token
+    return {
+        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik5pY2sgSm9uZXMiLCJwaWN0dXJlIjoiYXNzZXRzL2ltYWdlcy9uaWNrLnBuZyIsImVtYWlsIjoibmlja19qb25lc0BnbWFpbC5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.fTAK9gUtjoVwMYgznqTN9-6uXFMjedncCXSYtDLeZZE",
+        "messages": "Has ingresado exitosamente.",
+        "errors": "Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
+    }
+
+    # return {
+    #     "errors": "Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
+    # }
+
+    # raise HTTPException(
+    #     status_code=401,
+    #     detail="Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
+    # )
+    
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: Union[str, None] = None):
@@ -82,6 +101,30 @@ def update_item(item_id: int, item: Item):
     return {"item_name": item.name, "item_id": item_id}
 
 @app.post("/subir_archivo/")
+async def subir_archivo(file: UploadFile, folder: str):
+    try:
+        # Crear una conexión FTP
+        with FTP(ftp_host) as ftp:
+            # Iniciar sesión con las credenciales FTP
+            ftp.login(user=ftp_usuario, passwd=ftp_contrasena)
+
+            # Verificar si el directorio ya existe
+            if folder not in ftp.nlst():
+                # Si el directorio no existe, créalo
+                ftp.mkd(folder)
+
+            # Cambiar al directorio de destino en el servidor externo
+            ftp.cwd(folder)
+
+            # Leer el contenido del archivo en partes pequeñas y cargarlo por FTP
+            with file.file as archivo:
+                ftp.storbinary(f"STOR {file.filename}", archivo)
+
+        return {"mensaje": f"El archivo '{file.filename}' se ha subido exitosamente al servidor FTP."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error al subir el archivo: {str(e)}")
+
+@app.post("/subir_archivo_base64/")
 async def subir_archivo(payload: PayloadUploadFile):
     try:
         # Crear una conexión FTP
