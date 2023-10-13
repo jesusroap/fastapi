@@ -3,6 +3,7 @@ from typing import Union
 
 from fastapi import FastAPI, HTTPException, UploadFile, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
 import base64
@@ -76,20 +77,19 @@ async def logout():
 
 @app.post("/auth/login")
 async def login(user: UserDTO):
-    return {
-        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik5pY2sgSm9uZXMiLCJwaWN0dXJlIjoiYXNzZXRzL2ltYWdlcy9uaWNrLnBuZyIsImVtYWlsIjoibmlja19qb25lc0BnbWFpbC5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.fTAK9gUtjoVwMYgznqTN9-6uXFMjedncCXSYtDLeZZE",
-        "messages": "Has ingresado exitosamente.",
-        "errors": "Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
-    }
-
     # return {
-    #     "errors": "Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
+    #     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6Ik5pY2sgSm9uZXMiLCJwaWN0dXJlIjoiYXNzZXRzL2ltYWdlcy9uaWNrLnBuZyIsImVtYWlsIjoibmlja19qb25lc0BnbWFpbC5jb20iLCJpYXQiOjE1MTYyMzkwMjJ9.fTAK9gUtjoVwMYgznqTN9-6uXFMjedncCXSYtDLeZZE",
+    #     "messages": "Has ingresado exitosamente.",
     # }
 
     # raise HTTPException(
     #     status_code=401,
     #     detail="Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
     # )
+
+    error_message = "Correo electrónico o contraseña incorrectos, inténtelo de nuevo."
+    response_content = {"errors": error_message}
+    return JSONResponse(content=response_content, status_code=401)
     
 
 @app.get("/items/{item_id}")
