@@ -27,6 +27,8 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
+from cryptography.fernet import Fernet
+
 app = FastAPI()
 
 origins = ["*"]
@@ -59,11 +61,17 @@ ftp_usuario = config("FTP_USER")
 ftp_contrasena = config("FTP_PASS")
 
 # Configuración de la conexión a la base de datos MySQL
-DATABASE_URL = config("DATABASE_URL")
-engine = create_engine(DATABASE_URL, pool_recycle=280, pool_pre_ping=True)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = automap_base()
-Base.prepare(engine, reflect=True)
+# DATABASE_URL = config("DATABASE_URL")
+# engine = create_engine(DATABASE_URL, pool_recycle=280, pool_pre_ping=True)
+# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Base = automap_base()
+# Base.prepare(engine, reflect=True)
+
+# Configura los detalles del servidor de correo
+smtp_server = config("SMTP_SERVER")
+smtp_port = config("SMTP_PORT")
+smtp_username = config("SMTP_USERNAME")
+smtp_password = config("SMTP_PASS")
 
 @app.get("/")
 def read_root():
@@ -221,69 +229,63 @@ async def eliminar_directorio(nombre_directorio: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al eliminar directorio y su contenido: {str(e)}")
 
-@app.get("/user_catalog/")
-async def get_user_catalog(email: str):
-    try:
-        user = Base.classes.users
-        family = Base.classes.familys
-        product = Base.classes.products
-        family_product = Base.classes.familyproducts
+# @app.get("/user_catalog/")
+# async def get_user_catalog(email: str):
+#     try:
+#         user = Base.classes.users
+#         family = Base.classes.familys
+#         product = Base.classes.products
+#         family_product = Base.classes.familyproducts
 
-        # Crear una sesión de base de datos
-        db = SessionLocal()
+#         # Crear una sesión de base de datos
+#         db = SessionLocal()
 
-        # Consulta SQL para obtener el catálogo del usuario
-        stmt = (
-            select(
-                user.email,
-                family.name.label('family'),
-                product.name.label('name'),
-                product.namefile,
-                product.price
-            )
-            .select_from(
-                join(family_product, family, family.id == family_product.family_id)
-                .join(product, family_product.producto_id == product.id)
-                .join(user, family.user_id == user.id)
-            )
-            .where(user.email == email)
-        )
+#         # Consulta SQL para obtener el catálogo del usuario
+#         stmt = (
+#             select(
+#                 user.email,
+#                 family.name.label('family'),
+#                 product.name.label('name'),
+#                 product.namefile,
+#                 product.price
+#             )
+#             .select_from(
+#                 join(family_product, family, family.id == family_product.family_id)
+#                 .join(product, family_product.producto_id == product.id)
+#                 .join(user, family.user_id == user.id)
+#             )
+#             .where(user.email == email)
+#         )
 
-        result = db.execute(stmt)
+#         result = db.execute(stmt)
 
-        # Organizar los resultados en la estructura JSON requerida
-        catalog = {}
-        for row in result:
-            family_name = row[1]
-            product_data = {
-                "name": row[2],
-                "image": row[3],
-                "price": row[4]
-            }
+#         # Organizar los resultados en la estructura JSON requerida
+#         catalog = {}
+#         for row in result:
+#             family_name = row[1]
+#             product_data = {
+#                 "name": row[2],
+#                 "image": row[3],
+#                 "price": row[4]
+#             }
 
-            if family_name not in catalog:
-                catalog[family_name] = {"family": family_name, "products": []}
+#             if family_name not in catalog:
+#                 catalog[family_name] = {"family": family_name, "products": []}
 
-            catalog[family_name]["products"].append(product_data)
+#             catalog[family_name]["products"].append(product_data)
 
-        user_data = {"user": email, "catalog": list(catalog.values())}
+#         user_data = {"user": email, "catalog": list(catalog.values())}
 
-        db.close()
+#         db.close()
 
-        return user_data
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+#         return user_data
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
     
 app.include_router(router, prefix="/services", tags=["services"])
 
 @app.post("/send-email/")
 async def send_email(email_to: str, subject: str, message: str):
-    # Configura los detalles del servidor de correo
-    smtp_server = "smtp.hostinger.com"
-    smtp_port = 587
-    smtp_username = "contacto@boomtel.com.co"
-    smtp_password = "Contacto123*"
-
     # Crea un mensaje de correo electrónico
     msg = MIMEMultipart()
     msg["From"] = smtp_username
@@ -309,3 +311,23 @@ async def send_email(email_to: str, subject: str, message: str):
         return {"message": "Correo electrónico enviado correctamente"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error al enviar el correo electrónico: {str(e)}")
+    
+
+# clave_secreta = Fernet.generate_key()
+clave_secreta = config('KEY_SECRET_AES')
+clave_secreta = clave_secreta.encode("utf-8")
+fernet = Fernet(clave_secreta)
+
+@app.post("/encrypt/")
+async def encriptar_datos(datos_a_encriptar: str):
+    datos_a_encriptar_bytes = datos_a_encriptar.encode()
+    datos_encriptados = fernet.encrypt(datos_a_encriptar_bytes)
+    return {"datos_encriptados": datos_encriptados}
+
+@app.post("/decrypt/")
+async def desencriptar_datos(datos_encriptados: str):
+    try:
+        datos_desencriptados = fernet.decrypt(datos_encriptados.encode()).decode()
+        return {"datos_desencriptados": datos_desencriptados}
+    except Exception as e:
+        return {"error": "No se pudo desencriptar los datos."}
