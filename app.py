@@ -85,7 +85,7 @@ smtp_password = os.environ.get("SMTP_PASS")
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World update 2"}
+    return {"Hello": "World update 3"}
 
 @app.delete("/auth/logout")
 async def logout():
