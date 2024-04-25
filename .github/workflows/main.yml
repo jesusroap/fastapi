@@ -1,0 +1,21 @@
+name: Despliegue en hostinger
+on:
+  push:
+    branches:
+      - master
+ 
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: pull codigo en VPS
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          script: |
+                    cd /home/guidemytrial.com/api/fastapi
+                    git fetch origin master
+                    git reset --hard origin/master
+                    sudo systemctl restart apigmt
