@@ -14,6 +14,7 @@ jobs:
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASS }}
           script: |
                     cd /home/guidemytrial.com/api/fastapi
                     git fetch origin master
