@@ -1,7 +1,7 @@
 # app.py
 from typing import Union
 
-from fastapi import FastAPI, HTTPException, UploadFile, APIRouter
+from fastapi import FastAPI, HTTPException, UploadFile, APIRouter, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
@@ -29,6 +29,10 @@ from email.mime.multipart import MIMEMultipart
 
 from cryptography.fernet import Fernet
 
+from jinja2 import Template
+
+import httpx
+
 app = FastAPI()
 
 origins = ["*"]
@@ -54,6 +58,12 @@ class PayloadUploadFile(BaseModel):
     base64: str
     folder: str
     fileName: str
+
+class UserPreferences(BaseModel):
+    title: str
+    name: str
+    background_color: str
+    font_color: str
 
 # Configuración FTP del servidor externo
 ftp_host = config("FTP_HOST")
@@ -288,7 +298,7 @@ app.include_router(router, prefix="/services", tags=["services"])
 async def send_email(email_to: str, subject: str, message: str):
     # Crea un mensaje de correo electrónico
     msg = MIMEMultipart()
-    msg["From"] = smtp_username
+    msg["From"] = "contact@websmaker.co"
     msg["To"] = email_to
     msg["Subject"] = subject
 
@@ -297,13 +307,13 @@ async def send_email(email_to: str, subject: str, message: str):
 
     try:
         # Conéctate al servidor SMTP
-        server = smtplib.SMTP(smtp_server, smtp_port)
+        server = smtplib.SMTP("websmaker.co", "465")
         # server = smtplib.SMTP_SSL(smtp_server, smtp_port) # Para enviar por SSL
-        server.starttls()  # Usar TLS (si estás usando SMTPS, elimina esta línea)
-        server.login(smtp_username, smtp_password)
+        # server.starttls()  # Usar TLS (si estás usando SMTPS, elimina esta línea)
+        server.login("contact@websmaker.co", "@te6x8%A8B")
 
         # Envía el correo electrónico
-        server.sendmail(smtp_username, email_to, msg.as_string())
+        server.sendmail("contact@websmaker.co", email_to, msg.as_string())
 
         # Cierra la conexión
         server.quit()
@@ -331,3 +341,87 @@ async def desencriptar_datos(datos_encriptados: str):
         return {"datos_desencriptados": datos_desencriptados}
     except Exception as e:
         return {"error": "No se pudo desencriptar los datos."}
+
+@app.post("/build_template")
+async def build_template(user_prefs: UserPreferences, folder: str):
+    # TODO: Primero guardar en DB, y posterior traer la data de DB y esa seria la nueva data (user_prefs)
+    template_path = 'template.html'
+    generator = CodeGenerator(template_path)
+    generated_html = generator.generate_code(user_prefs)
+
+    with FTP(ftp_host) as ftp:
+        ftp.login(user=ftp_usuario, passwd=ftp_contrasena)
+
+        if folder not in ftp.nlst():
+            ftp.mkd(folder)
+
+        ftp.cwd(folder)
+
+        html_bytes = BytesIO(generated_html.encode('utf-8'))
+        ftp.storbinary(f'STOR {"index.html"}', html_bytes)
+
+    return 'El template se creo exitosamente.'
+
+
+@app.post("/create_subdomain")
+async def create_subdomain(domain: str = Form(...)):
+    try:
+        data_dns = {
+            "data": "",
+            "name": "",
+            "ttl": 10800,
+            "type": "A"
+        }
+
+        headers_dns = {
+            "Content-Type": "application/json",
+            "Authorization": ""
+        }
+
+
+        # Datos a enviar como form-data
+        form_data_cpanel = {
+            "domain": domain,
+            "rootdomain": "websmaker.co",
+            "canoff": "1",
+            "disallowdot": "0",
+            "dir": config('DIR_TEMPLATE')
+        }
+
+        # Encabezados para la solicitud al servicio externo
+        headers = {
+            "Content-Type": "multipart/form-data",
+            "Authorization": config('AUTHORIZATION_CPANEL_API'),
+        }
+
+        # Realizar una solicitud POST al servicio externo
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"https://websmaker.co:2083/execute/SubDomain/addsubdomain",
+                data=form_data,
+                headers=headers,
+            )
+
+        # Verificar si la solicitud fue exitosa (código 200)
+        if response.status_code == 200:
+            # Devolver los datos del servicio externo como respuesta
+            return response.json()
+        else:
+            # Levantar una excepción si la solicitud no fue exitosa
+            raise HTTPException(status_code=response.status_code, detail="Error al crear el subdominio")
+
+    except Exception as e:
+        # Capturar cualquier error y devolverlo como una respuesta de error
+        raise HTTPException(status_code=500, detail=str(e))
+    
+
+class CodeGenerator:
+    def __init__(self, template_path):
+        # Cargar la plantilla desde un archivo
+        with open(f'templates/{template_path}', 'r') as file:
+            self.template = Template(file.read())
+
+    def generate_code(self, user_preferences):
+        # Generar código utilizando la plantilla y las preferencias del usuario
+        generated_code = self.template.render(user_preferences)
+        return generated_code
