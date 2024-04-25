@@ -66,9 +66,9 @@ class UserPreferences(BaseModel):
     font_color: str
 
 # Configuración FTP del servidor externo
-ftp_host = config("FTP_HOST")
-ftp_usuario = config("FTP_USER")
-ftp_contrasena = config("FTP_PASS")
+ftp_host = os.environ.get("FTP_HOST")
+ftp_usuario = os.environ.get("FTP_USER")
+ftp_contrasena = os.environ.get("FTP_PASS")
 
 # Configuración de la conexión a la base de datos MySQL
 # DATABASE_URL = config("DATABASE_URL")
@@ -78,10 +78,10 @@ ftp_contrasena = config("FTP_PASS")
 # Base.prepare(engine, reflect=True)
 
 # Configura los detalles del servidor de correo
-smtp_server = config("SMTP_SERVER")
-smtp_port = config("SMTP_PORT")
-smtp_username = config("SMTP_USERNAME")
-smtp_password = config("SMTP_PASS")
+smtp_server = os.environ.get("SMTP_SERVER")
+smtp_port = os.environ.get("SMTP_PORT")
+smtp_username = os.environ.get("SMTP_USERNAME")
+smtp_password = os.environ.get("SMTP_PASS")
 
 @app.get("/")
 def read_root():
@@ -324,7 +324,7 @@ async def send_email(email_to: str, subject: str, message: str):
     
 
 # clave_secreta = Fernet.generate_key()
-clave_secreta = config('KEY_SECRET_AES')
+clave_secreta = os.environ.get('KEY_SECRET_AES')
 clave_secreta = clave_secreta.encode("utf-8")
 fernet = Fernet(clave_secreta)
 
